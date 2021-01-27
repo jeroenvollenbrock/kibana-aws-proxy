@@ -1,0 +1,12 @@
+# package directories
+node_modules
+
+.build
+
+coverage
+
+out-logger.json
+
+.DS_Store
+
+junit.xml

@@ -1,0 +1,18 @@
+{
+  "name": "kibana-aws-proxy",
+  "version": "1.0.1",
+  "description": "A local proxy server to sign requests to AWS Elasticsearch instances",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jeroen Vollenbrock <jeroen@vollenbrock.nl>",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "aws-sdk": "^2.831.0",
+    "express": "^4.17.1"
+  },
+  "bin": {
+    "kibana-aws-proxy": "./index.js"
+  }
+}
