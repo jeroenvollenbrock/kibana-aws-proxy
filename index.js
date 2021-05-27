@@ -9,6 +9,7 @@ const {spawn} = require('child_process');
 const SignerV4 = AWS.Signers.V4;
 const AWSHttpClient = AWS.HttpClient;
 
+let profile = process.env.AWS_PROFILE || 'default';
 
 let credentials;
 let endpoint;
@@ -73,7 +74,6 @@ function getQuery(url) {
   return null;
 }
 
-
 const app = express();
 app.use((req, res, next) => {
   req.body = '';
@@ -88,9 +88,9 @@ function wrapHandler(handler) {
 }
 
 app.get('/_login', wrapHandler(async (req, res) => {
-  const es = new AWS.ES();
   if(req.query.target) {
     const target = req.query.target;
+    const es = new AWS.ES();
     const domain = await es.describeElasticsearchDomain({
       DomainName:target
     }).promise();
@@ -107,14 +107,64 @@ app.get('/_login', wrapHandler(async (req, res) => {
 
     res.redirect('/_plugin/kibana/');
   } else {
+
+    if(req.query.profile) {
+      profile = req.query.profile;
+      process.env.AWS_PROFILE = profile;
+      AWS.config.credentials = null;
+    }
+
+    if(req.query.adfs) {
+      AWS.config.credentials = null;
+      const res = spawn('aws-adfs', ['login', '--profile', profile], {stdio: 'inherit', stderr: 'inherit', env: process.env });
+      await new Promise((resolve) => {
+        res.once('exit', resolve);
+      });
+    }
+
     await loadCredentials();
-    const domains = await es.listDomainNames().promise();
 
-    const buttons = domains.DomainNames.map(d => {
-      return '<input type="submit" name="target" value="'+d.DomainName+'" /><br/><br/>';
-    }).join('');
+    let profileButtons = '';
+    let buttons = '';
+    try {
+      const loader = new AWS.IniLoader();
+      const profiles = loader.loadFrom();
+      profileButtons += Object.keys(profiles)
+        .map(p => '<input type="submit" name="profile" value="'+p+'"/><br/><br/>')
+        .join('');
+    } catch (err) {
+    }
 
-    res.send('<h1>Pick Elasticsearch instance</h1><form>'+buttons+'</form>');
+    try {
+      const es = new AWS.ES();
+      const domains = await es.listDomainNames().promise();
+
+      buttons += domains.DomainNames.map(d => {
+        return '<input type="submit" name="target" value="'+d.DomainName+'" /><br/><br/>';
+      }).join('');
+    } catch(err) {
+      if (!profileButtons) {
+        throw err;
+      }
+    }
+
+    const result = `
+      <h1>Pick Elasticsearch instance</h1>
+      <form>
+      
+      <h2>Elasticsearch instances (${profile})</h2>
+      ${buttons || 'No instances found'}
+
+      ${profileButtons ? '<h2>AWS Profiles</h2>' : ''}
+      ${profileButtons}
+
+      ${AWS.config.credentials && AWS.config.credentials.sessionToken && `
+        <input type="submit" name="adfs" value="ADFS LOGIN" />
+      `}
+      </form>
+    `;
+
+    res.send(result);
   }
 }));
 
