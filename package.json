@@ -1,6 +1,6 @@
 {
   "name": "kibana-aws-proxy",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A local proxy server to sign requests to AWS Elasticsearch instances",
   "main": "index.js",
   "scripts": {
